@@ -1,9 +1,10 @@
 <?php
 class FrikCarrierRate extends ObjectModel
 {
-    public $id_rate;
-    public $id_carrier_reference; // id_reference estable del carrier
-    public $carrier_name; // etiqueta visible (GLS/UPS/...)
+    /** DB fields */
+    public $id_frikgestiontransportista_carrier_rates;
+    public $id_carrier_reference;
+    public $carrier_name;
     public $country_iso;
     public $weight_min_kg;
     public $weight_max_kg;
@@ -11,19 +12,18 @@ class FrikCarrierRate extends ObjectModel
     public $active;
     public $date_upd;
 
-
-    public static $definition = [
-        'table' => 'frikgestiontransportista_carrier_rates',
-        'primary' => 'id_rate',
-        'fields' => [
-            'id_carrier_reference' => ['type' => self::TYPE_INT, 'required' => true],
-            'carrier_name' => ['type' => self::TYPE_STRING, 'required' => true, 'size' => 64],
-            'country_iso' => ['type' => self::TYPE_STRING, 'required' => true, 'size' => 2],
-            'weight_min_kg' => ['type' => self::TYPE_FLOAT, 'required' => true],
-            'weight_max_kg' => ['type' => self::TYPE_FLOAT, 'required' => true],
-            'avg_price_eur' => ['type' => self::TYPE_FLOAT, 'required' => true],
-            'active' => ['type' => self::TYPE_BOOL, 'required' => true],
-            'date_upd' => ['type' => self::TYPE_DATE],
-        ]
-    ];
+    public static $definition = array(
+        'table'   => 'frikgestiontransportista_carrier_rates', // SIN prefijo
+        'primary' => 'id_frikgestiontransportista_carrier_rates',
+        'fields'  => array(
+            'id_carrier_reference' => array('type'=> self::TYPE_INT,   'required'=> true, 'validate'=>'isUnsignedId'),
+            'carrier_name'         => array('type'=> self::TYPE_STRING,'required'=> true, 'size'=>64, 'validate'=>'isCleanHtml'),
+            'country_iso'          => array('type'=> self::TYPE_STRING,'required'=> true, 'size'=>2,  'validate'=>'isLanguageIsoCode'),
+            'weight_min_kg'        => array('type'=> self::TYPE_FLOAT, 'required'=> true),
+            'weight_max_kg'        => array('type'=> self::TYPE_FLOAT, 'required'=> true),
+            'avg_price_eur'        => array('type'=> self::TYPE_FLOAT, 'required'=> true),
+            'active'               => array('type'=> self::TYPE_BOOL,  'required'=> true, 'validate'=>'isBool'),
+            'date_upd'             => array('type'=> self::TYPE_DATE),
+        ),
+    );
 }
