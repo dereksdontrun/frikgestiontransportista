@@ -32,7 +32,7 @@ $logger->log("Pedidos encolados: " . $inserted, 'INFO', $inserted ? true : false
 /** =============================================== */
 
 //DEBUG por si quiero ver los parámetros enviados etc en el txt de log
-$debug = false;
+$debug = true;
 
 // Lock anti-solape
 $db = Db::getInstance();
@@ -270,7 +270,7 @@ function getOrderInfo($idOrder)
 
 function getOptions($country, $weight)
 {
-    $sql = 'SELECT id_carrier_reference, carrier_name, country_iso, weight_min_kg, weight_max_kg, avg_price_eur
+    $sql = 'SELECT id_carrier_reference, carrier_name, country_iso, weight_min_kg, weight_max_kg, avg_price_eur AS price
         FROM ' . _DB_PREFIX_ . 'frikgestiontransportista_carrier_rates
         WHERE active = 1 AND country_iso = "' . pSQL($country) . '"
           AND ' . (float) $weight . ' >= weight_min_kg

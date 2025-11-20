@@ -49,16 +49,16 @@ class AdminFrikDecisionLogController extends ModuleAdminController
                 'align' => 'right',
             ],
 
-            'engine' => [
-                'title' => 'Motor',
-                'type' => 'select',
-                'list' => [
-                    ['id' => 'rules', 'name' => 'rules'],
-                    ['id' => 'gpt', 'name' => 'gpt'],
-                ],
-                'filter_key' => 'a!engine',
-                'width' => 70,
-            ],
+            // 'engine' => [
+            //     'title' => 'Motor',
+            //     'type' => 'select',
+            //     'list' => [
+            //         ['id' => 'rules', 'name' => 'rules'],
+            //         ['id' => 'gpt', 'name' => 'gpt'],
+            //     ],
+            //     'filter_key' => 'a!engine',
+            //     'width' => 70,
+            // ],
 
             'criteria' => ['title' => 'Criterio'],
 
@@ -83,7 +83,8 @@ class AdminFrikDecisionLogController extends ModuleAdminController
             'a.`id_frikgestiontransportista_decision_log`, a.`date_add`, a.`id_order`, a.`country_iso`, ' .
             'a.`weight_kg`, a.`total_paid_eur`, ' .
             'a.`carrier_before`, a.`carrier_after`, a.`price_selected_eur`, ' .
-            'a.`engine`, a.`criteria`, a.`suppliers_summary`, a.`is_test`, a.`explanations_json`';
+            // 'a.`engine`, 
+            'a.`criteria`, a.`suppliers_summary`, a.`is_test`, a.`explanations_json`';
         // 'a.`applied_by_name`, a.`applied_at`';
 
 
@@ -104,18 +105,20 @@ class AdminFrikDecisionLogController extends ModuleAdminController
         parent::__construct();
 
 
-        // Botones de cabecera
+        // Botones de cabecera. En __construct, self::$currentIndex no parece que exista así que montamos la url
+        $back_url = 'index.php?controller=' . $this->controller_name . '&token=' . $this->token;
         $this->page_header_toolbar_btn['export'] = [
-            'href' => self::$currentIndex . '&exportLogs=1&token=' . $this->token,
+            'href' => $back_url . '&exportLogs=1&token=' . $this->token,
             'desc' => $this->l('Exportar CSV'),
             'icon' => 'process-icon-export', // añade icono
         ];
 
-        $this->page_header_toolbar_btn['purge'] = [
-            'href' => self::$currentIndex . '&purgeOld=1&days=90&token=' . $this->token,
-            'desc' => $this->l('Purgar 90+ días'), // evita el símbolo '>'
-            'icon' => 'process-icon-eraser',       // icono de borrar/limpiar
-        ];
+        //por ahora no muestro botón para eliminar líneas
+        // $this->page_header_toolbar_btn['purge'] = [
+        //     'href' => $back_url . '&purgeOld=1&days=90&token=' . $this->token,
+        //     'desc' => $this->l('Purgar 90+ días'), // evita el símbolo '>'
+        //     'icon' => 'process-icon-eraser',       // icono de borrar/limpiar
+        // ];
     }
 
     public function displayApplyLink($token = null, $id, $name = null)
@@ -215,14 +218,28 @@ class AdminFrikDecisionLogController extends ModuleAdminController
             </div>';
     }
 
+    //para que los botones del header para exportar el csv y para purgar la tabla funcionen, no se los recoge con postProcess() porque son GET y no POST, así que se recogen en initContent() que si  recoge los botones GET
+    public function initContent()
+    {
+        if (Tools::isSubmit('exportLogs')) {
+            $this->processExportCSV(); // ¡debe hacer exit/die al final!
+            return;
+        }
+
+        if (Tools::isSubmit('purgeOld')) {
+            $days = (int) Tools::getValue('days', 90);
+            $this->processPurge($days);
+            Tools::redirectAdmin(self::$currentIndex . '&conf=4&token=' . $this->token);            
+            return;
+        }
+
+        parent::initContent();
+    }
 
     public function postProcess()
     {
         parent::postProcess();
-        if (Tools::getIsset('exportLogs'))
-            $this->processExportCSV();
-        if (Tools::getIsset('purgeOld'))
-            $this->processPurge((int) Tools::getValue('days', 90));
+
         if (Tools::getIsset('applyChange'))
             $this->processApplyChange((int) Tools::getValue($this->identifier));
     }
@@ -350,15 +367,15 @@ class AdminFrikDecisionLogController extends ModuleAdminController
         $where = 'WHERE 1';
         $id_order = (int) Tools::getValue('frikgt_logsFilter_a!id_order');
         $country = trim(Tools::getValue('frikgt_logsFilter_a!country_iso'));
-        $engine = trim(Tools::getValue('frikgt_logsFilter_a!engine'));
+        // $engine = trim(Tools::getValue('frikgt_logsFilter_a!engine'));
         $date_from = Tools::getValue('frikgt_logsFilter_a!date_add[0]');
         $date_to = Tools::getValue('frikgt_logsFilter_a!date_add[1]');
         if ($id_order)
             $where .= ' AND a.id_order=' . (int) $id_order;
         if ($country !== '')
             $where .= " AND a.country_iso='" . pSQL($country) . "'";
-        if ($engine !== '')
-            $where .= " AND a.engine='" . pSQL($engine) . "'";
+        // if ($engine !== '')
+        //     $where .= " AND a.engine='" . pSQL($engine) . "'";
         if ($date_from)
             $where .= " AND a.date_add >= '" . pSQL($date_from) . " 00:00:00'";
         if ($date_to)
@@ -378,21 +395,21 @@ class AdminFrikDecisionLogController extends ModuleAdminController
         fwrite($out, "sep=;\n");
 
         if (!empty($rows))
-            fputcsv($out, array_keys($rows[0]));
+            fputcsv($out, array_keys($rows[0]), ';');
         foreach ($rows as $r)
-            fputcsv($out, $r);
+            fputcsv($out, $r, ';');
         fclose($out);
         exit;
     }
 
 
     protected function processPurge($days)
-    {
-        $days = max(1, (int) $days);
-        Db::getInstance()->execute(
-            'DELETE FROM ' . _DB_PREFIX_ . 'frikgestiontransportista_decision_log '
-            . 'WHERE date_add < DATE_SUB(NOW(), INTERVAL ' . (int) $days . ' DAY)'
-        );
-        $this->confirmations[] = sprintf($this->l('Purgados logs con más de %d días.'), $days);
+    {        
+        // $days = max(1, (int) $days);
+        // Db::getInstance()->execute(
+        //     'DELETE FROM ' . _DB_PREFIX_ . 'frikgestiontransportista_decision_log '
+        //     . 'WHERE date_add < DATE_SUB(NOW(), INTERVAL ' . (int) $days . ' DAY)'
+        // );
+        // $this->confirmations[] = sprintf($this->l('Purgados logs con más de %d días.'), $days);
     }
 }
